@@ -1,0 +1,16 @@
+{
+  "garbage": {
+    "board_width": 10,
+    "seed": 12345,
+    "lines": 4,
+    "expected_same_event_single_hole": true
+  },
+  "ko": {
+    "respawn_delay_seconds": 1.5,
+    "top_out_reason": "spawn_blocked"
+  },
+  "winner": {
+    "timeout_priority": ["ko_count", "sent_lines", "lower_board_height"],
+    "draw_when_all_equal": true
+  }
+}

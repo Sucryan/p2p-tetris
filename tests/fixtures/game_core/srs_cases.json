@@ -1,0 +1,32 @@
+[
+  {
+    "name": "jlstz_t_kicks_left_when_clockwise_rotation_is_blocked",
+    "piece": "T",
+    "rotation": "SPAWN",
+    "x": 3,
+    "y": 20,
+    "direction": "cw",
+    "blockers": [[4, 20]],
+    "expected": {"x": 2, "y": 20, "rotation": "RIGHT", "kick_index": 1}
+  },
+  {
+    "name": "i_piece_kicks_left_when_clockwise_rotation_is_blocked",
+    "piece": "I",
+    "rotation": "SPAWN",
+    "x": 0,
+    "y": 20,
+    "direction": "cw",
+    "blockers": [[2, 20]],
+    "expected": {"x": -2, "y": 20, "rotation": "RIGHT", "kick_index": 1}
+  },
+  {
+    "name": "o_piece_rotation_keeps_same_cells",
+    "piece": "O",
+    "rotation": "SPAWN",
+    "x": 4,
+    "y": 20,
+    "direction": "cw",
+    "blockers": [],
+    "expected": {"x": 4, "y": 20, "rotation": "RIGHT", "kick_index": 0}
+  }
+]

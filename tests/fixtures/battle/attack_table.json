@@ -1,0 +1,12 @@
+{
+  "single": 0,
+  "double": 1,
+  "triple": 2,
+  "tetris": 4,
+  "t_spin_mini_single": 1,
+  "t_spin_single": 2,
+  "t_spin_double": 4,
+  "t_spin_triple": 6,
+  "back_to_back_bonus": 1,
+  "combo_bonus": [0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5]
+}
