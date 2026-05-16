@@ -156,6 +156,12 @@ wheels = [
 ]
 
 [[package]]
+name = "nuitka"
+version = "4.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/e5/d6/477dc84457fc07885f5fd020da4920e8a2787b2c04563ad444ac98f7d3eb/nuitka-4.0.tar.gz", hash = "sha256:0f404f292c3c2cc808d186d05a6d06a4b0aeca93f299cdfd5e33ddbcd19ab560", size = 4410008, upload-time = "2026-02-05T20:52:39.747Z" }
+
+[[package]]
 name = "p2p-tetris"
 version = "0.1.0"
 source = { editable = "." }
@@ -169,6 +175,9 @@ dev = [
     { name = "pytest" },
     { name = "ruff" },
 ]
+packaging = [
+    { name = "nuitka" },
+]
 
 [package.metadata]
 requires-dist = [{ name = "pyside6", specifier = ">=6.8" }]
@@ -179,6 +188,7 @@ dev = [
     { name = "pytest", specifier = ">=9.0.3" },
     { name = "ruff", specifier = ">=0.15.13" },
 ]
+packaging = [{ name = "nuitka", specifier = "==4.0" }]
 
 [[package]]
 name = "packaging"
