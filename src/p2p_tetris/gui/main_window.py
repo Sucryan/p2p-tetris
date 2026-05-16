@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from PySide6.QtCore import QObject, QTimer, Qt, Signal
+from PySide6.QtCore import QObject, QSettings, QTimer, Qt, Signal
 from PySide6.QtGui import QCloseEvent, QKeyEvent
 from PySide6.QtWidgets import QMainWindow, QStackedWidget
 
@@ -73,11 +73,13 @@ class MainWindow(QMainWindow):
         keyboard: KeyboardController | None = None,
         local_session: LocalGameSession | None = None,
         net_client_factory: Callable[[ServerAddress], ConnectedNetClient] | None = None,
+        settings: QSettings | None = None,
         parent: QMainWindow | None = None,
     ) -> None:
         super().__init__(parent)
         self.setWindowTitle("P2P Tetris")
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self._settings = settings
 
         self.keyboard = keyboard or KeyboardController()
         self.local_session = local_session or LocalGameSession(self.keyboard)
@@ -174,6 +176,7 @@ class MainWindow(QMainWindow):
 
     def connect_to_server(self, host: str, port: int, player_name: str) -> None:
         self._runtime_timer.stop()
+        self._save_connection_settings(host, port, player_name)
         connection = self.network_runtime.connect(host, port, player_name)
         self._network_timer.start()
         self.connect_screen.update_connection(connection)
@@ -248,6 +251,14 @@ class MainWindow(QMainWindow):
 
     def _disconnect_network(self) -> None:
         self.network_runtime.close()
+
+    def _save_connection_settings(self, host: str, port: int, player_name: str) -> None:
+        if self._settings is None:
+            return
+        self._settings.setValue("connection/host", host)
+        self._settings.setValue("connection/port", port)
+        self._settings.setValue("connection/player_name", player_name)
+        self._settings.sync()
 
     def _current_tick(self) -> int:
         versus = self.network_runtime.versus_session

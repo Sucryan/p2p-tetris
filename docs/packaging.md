@@ -30,6 +30,24 @@ PYTHONPATH=src uv run python -m p2p_tetris.packaging.pyside6_deploy.deploy_clien
 
 設定檔為 `src/p2p_tetris/packaging/pyside6_deploy/pysidedeploy.spec`。
 
+## macOS `.app`
+
+macOS GUI App 的執行文件位於 `docs/mac-packaging/execution.md`。
+
+第一版只支援 Apple Silicon `arm64`，只包 GUI client，不內建 server。build-time 依賴透過 `uv sync --dev --group packaging` 安裝；終端玩家不需要安裝 `uv` 或 Python 工程依賴。
+
+```bash
+PYTHONPATH=src uv run python -m p2p_tetris.packaging.macos.build_app --dry-run
+PYTHONPATH=src uv run python -m p2p_tetris.packaging.macos.build_app
+```
+
+輸出：
+
+- `build/pyside6-deploy/macos/P2P Tetris.app`
+- `dist/P2P-Tetris-macOS-arm64.zip`
+
+目前沒有 Developer ID signing / notarization；wrapper 會做 ad-hoc signing，Gatekeeper 仍可能要求使用者手動允許。
+
 ## PyInstaller fallback
 
 fallback spec 位於 `src/p2p_tetris/packaging/pyinstaller/`。

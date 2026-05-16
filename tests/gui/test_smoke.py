@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
-from PySide6.QtCore import QEvent, Qt
+from PySide6.QtCore import QEvent, QSettings, Qt
 from PySide6.QtGui import QKeyEvent
 from PySide6.QtWidgets import QApplication
 
@@ -66,6 +67,19 @@ def test_main_window_switches_between_menu_connect_waiting_and_solo(qt_app: QApp
     window.show_main_menu()
     assert window.stack.currentWidget() is window.main_menu
     window.close()
+
+
+def test_main_window_saves_connection_settings(qt_app: QApplication, tmp_path: Path) -> None:
+    settings = QSettings(str(tmp_path / "settings.ini"), QSettings.Format.IniFormat)
+
+    window = MainWindow(net_client_factory=lambda _address: FakeGuiNetClient(), settings=settings)
+    window.connect_to_server("192.168.1.23", 7777, "Ada")
+
+    assert settings.value("connection/host") == "192.168.1.23"
+    assert int(settings.value("connection/port")) == 7777
+    assert settings.value("connection/player_name") == "Ada"
+    window.close()
+    qt_app.processEvents()
 
 
 def test_screens_and_renderer_accept_view_models(qt_app: QApplication) -> None:
