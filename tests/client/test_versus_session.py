@@ -15,6 +15,7 @@ from p2p_tetris.net import (
     MatchStart,
     OpponentStateSummary,
     ProtocolMessage,
+    ReliableAck,
     RespawnAssigned,
 )
 
@@ -127,6 +128,29 @@ def test_garbage_assignment_is_pending_until_next_lock_then_applied() -> None:
     assert visible[-1][2] is PieceType.Z
 
 
+def test_duplicate_garbage_assignment_is_acked_but_not_applied_twice() -> None:
+    net = FakeNetClient()
+    session = VersusGameSession(
+        session_id=SESSION,
+        player_id=LOCAL,
+        action_source=ScriptedController({}),
+        net_client=net,
+    )
+    session.handle_server_message(_match_start())
+    assigned = GarbageAssigned(SESSION, MATCH, OPPONENT, LOCAL, 10, 2, 3, "g1", "a1")
+
+    session.handle_server_message(assigned)
+    session.handle_server_message(assigned)
+
+    acks = [message for message in net.sent if isinstance(message, ReliableAck)]
+    assert len(acks) == 2
+    assert acks[0].sender_id == LOCAL
+    assert acks[0].acked_sender_id == OPPONENT
+    assert acks[0].received_seq == 10
+    assert session.pending_garbage_lines == 2
+    assert session.view_model.board.pending_garbage_lines == 2
+
+
 def test_garbage_assignment_can_cancel_existing_pending_lines() -> None:
     net = FakeNetClient()
     session = VersusGameSession(
@@ -154,6 +178,37 @@ def test_garbage_assignment_can_cancel_existing_pending_lines() -> None:
             canceled_lines=3,
         ),
     )
+
+    assert session.pending_garbage_lines == 1
+
+
+def test_duplicate_garbage_cancellation_is_not_applied_twice() -> None:
+    net = FakeNetClient()
+    session = VersusGameSession(
+        session_id=SESSION,
+        player_id=LOCAL,
+        action_source=ScriptedController({}),
+        net_client=net,
+    )
+    session.handle_server_message(_match_start())
+    session.handle_server_message(
+        GarbageAssigned(SESSION, MATCH, OPPONENT, LOCAL, 10, 4, 3, "g1", "a1"),
+    )
+    cancellation = GarbageAssigned(
+        SESSION,
+        MATCH,
+        LOCAL,
+        LOCAL,
+        11,
+        0,
+        0,
+        "cancel",
+        "a2",
+        canceled_lines=3,
+    )
+
+    session.handle_server_message(cancellation)
+    session.handle_server_message(cancellation)
 
     assert session.pending_garbage_lines == 1
 

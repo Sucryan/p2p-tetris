@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Protocol
 
 from p2p_tetris.battle import AttackCalculator
-from p2p_tetris.common import GameConfig, MatchId, PlayerId, SessionId
+from p2p_tetris.common import GameConfig, MatchId, MonotonicClock, PlayerId, SessionId, SystemClock
 from p2p_tetris.controllers import ActionSource
 from p2p_tetris.game_core import (
     ClearEvent,
@@ -29,6 +29,7 @@ from p2p_tetris.net import (
     ProtocolMessage,
     RespawnAssigned,
 )
+from p2p_tetris.net.reliability import ReliableChannel, target_for_reliable
 
 from p2p_tetris.client.view_models import (
     BoardViewModel,
@@ -72,6 +73,7 @@ class VersusGameSession:
         net_client: NetClientPort,
         config: GameConfig | None = None,
         attack_calculator: AttackCalculator | None = None,
+        clock: MonotonicClock | None = None,
     ) -> None:
         self._session_id = session_id
         self._player_id = player_id
@@ -79,6 +81,7 @@ class VersusGameSession:
         self._net_client = net_client
         self._config = config or GameConfig()
         self._attack_calculator = attack_calculator or AttackCalculator()
+        self._incoming_reliability = ReliableChannel(clock or SystemClock())
         self._engine = GameEngine(seed=None, config=self._config)
         self._tick = 0
         self._running = False
@@ -132,9 +135,11 @@ class VersusGameSession:
         if isinstance(message, MatchStart):
             self._handle_match_start(message)
         elif isinstance(message, GarbageAssigned):
-            self._handle_garbage_assigned(message)
+            if self._mark_incoming_reliable(message):
+                self._handle_garbage_assigned(message)
         elif isinstance(message, RespawnAssigned):
-            self._handle_respawn_assigned(message)
+            if self._mark_incoming_reliable(message):
+                self._handle_respawn_assigned(message)
         elif isinstance(message, MatchSnapshot):
             self._handle_match_snapshot(message)
         elif isinstance(message, OpponentStateSummary):
@@ -206,6 +211,13 @@ class VersusGameSession:
         self._paused = False
         self._tick = 0
         self._engine.reset(seed=message.seed, config=self._config)
+
+    def _mark_incoming_reliable(self, message: GarbageAssigned | RespawnAssigned) -> bool:
+        if target_for_reliable(message) != self._player_id:
+            return False
+        decision = self._incoming_reliability.mark_received(message)
+        self._net_client.send(decision.ack)
+        return decision.apply
 
     def _handle_garbage_assigned(self, message: GarbageAssigned) -> None:
         if not self._is_current_match(message.match_id) or message.target_id != self._player_id:
@@ -351,8 +363,14 @@ class VersusGameSession:
 
     def _build_view_model(self, connection_state: ConnectionState) -> GameViewModel:
         snapshot = self._engine.snapshot()
+        board = BoardViewModel.from_snapshot(
+            snapshot,
+            hidden_rows=self._config.hidden_rows,
+        )
+        pending_garbage_lines = self.pending_garbage_lines
         versus_hud: VersusHudViewModel | None = None
         if self._match_id is not None:
+            board = replace(board, pending_garbage_lines=pending_garbage_lines)
             versus_hud = VersusHudViewModel(
                 match_id=self._match_id,
                 local_player_id=self._player_id,
@@ -360,14 +378,11 @@ class VersusGameSession:
                 remaining_seconds=self._remaining_seconds,
                 ko_counts=dict(self._ko_counts),
                 sent_lines=dict(self._sent_lines),
-                pending_garbage_lines=self.pending_garbage_lines,
+                pending_garbage_lines=pending_garbage_lines,
                 is_alive=self._alive and not snapshot.top_out,
             )
         return GameViewModel(
-            board=BoardViewModel.from_snapshot(
-                snapshot,
-                hidden_rows=self._config.hidden_rows,
-            ),
+            board=board,
             preview=PiecePreviewViewModel.from_snapshot(snapshot),
             solo_hud=SoloHudViewModel(
                 score=snapshot.score,

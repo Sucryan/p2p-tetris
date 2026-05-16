@@ -240,6 +240,8 @@ class MainWindow(QMainWindow):
             self.show_versus_game(update.view_model)
             self._runtime_timer.start()
             return
+        if self.stack.currentWidget() is self.result_screen:
+            return
         if update.connection.state is ConnectionState.QUEUED:
             self.show_waiting(update.connection)
         elif update.connection.state is ConnectionState.ENDED:

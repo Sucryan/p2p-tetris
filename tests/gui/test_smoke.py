@@ -24,7 +24,7 @@ from p2p_tetris.client import (
 from p2p_tetris.common import MatchId, PlayerId
 from p2p_tetris.controllers import KeyboardController
 from p2p_tetris.game_core import PieceType, PlayerAction
-from p2p_tetris.net import ClientHello, ProtocolMessage
+from p2p_tetris.net import ClientHello, ProtocolMessage, QueueStatus
 from p2p_tetris.gui import (
     ConnectScreen,
     GameViewRenderer,
@@ -82,6 +82,36 @@ def test_main_window_saves_connection_settings(qt_app: QApplication, tmp_path: P
     qt_app.processEvents()
 
 
+def test_result_screen_is_not_replaced_by_queue_status(qt_app: QApplication) -> None:
+    fake_clients: list[FakeGuiNetClient] = []
+
+    def factory(_address: ServerAddress) -> FakeGuiNetClient:
+        client = FakeGuiNetClient()
+        fake_clients.append(client)
+        return client
+
+    window = MainWindow(net_client_factory=factory)
+    window.connect_to_server("127.0.0.1", 7777, "Alice")
+    hello = fake_clients[0].sent[0]
+    assert isinstance(hello, ClientHello)
+    window.show_match_result(_match_result())
+
+    fake_clients[0].inbound.append(
+        QueueStatus(
+            player_id=hello.player_id,
+            active_players=(hello.player_id,),
+            waiting_players=(),
+            position=0,
+            room_capacity=7,
+        ),
+    )
+    window._poll_network()
+
+    assert window.stack.currentWidget() is window.result_screen
+    window.close()
+    qt_app.processEvents()
+
+
 def test_screens_and_renderer_accept_view_models(qt_app: QApplication) -> None:
     calls: list[Any] = []
     main = MainMenuScreen(
@@ -111,6 +141,7 @@ def test_screens_and_renderer_accept_view_models(qt_app: QApplication) -> None:
     solo.update_view_model(view_model)
     versus.update_view_model(_versus_view_model())
     result.update_result(_match_result())
+    assert result.next_status_label.text() == "Match ended"
     connect.update_connection(ConnectionViewModel(ConnectionState.CONNECTING, "Connecting"))
     waiting.update_connection(ConnectionViewModel(ConnectionState.QUEUED, "Waiting"))
 
